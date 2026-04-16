@@ -57,6 +57,20 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     phi(inside_cylinder) = NaN;
     psi(inside_cylinder) = NaN;
     
+    %% Compute Stagnation Points
+    % Stagnation points occur where dW/dz = 0
+    % dW/dz = v_0(1 - a^2/z^2) + i*mu/z^2 = 0
+    % Solving: z^2 = a^2 - i*mu/v_0
+    z_squared = a^2 - 1i*mu/v_0;
+    z_stag = [sqrt(z_squared); -sqrt(z_squared)];
+    x_stag = real(z_stag);
+    y_stag = imag(z_stag);
+    
+    % Filter stagnation points outside the cylinder
+    stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
+    x_stag = x_stag(stag_outside);
+    y_stag = y_stag(stag_outside);
+    
     %% Figure 1: Streamlines and Equipotential Lines
     figure(fig_start)
     set(gcf, 'Position', [100, 100, 800, 700]);
@@ -71,6 +85,16 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);  % Gray filled cylinder
     plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);  % Cylinder boundary
     
+    % Plot stagnation points
+    if ~isempty(x_stag)
+        plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
+        % Label stagnation points
+        for i = 1:length(x_stag)
+            text(x_stag(i), y_stag(i) + 0.25, sprintf('Stag (%.2f, %.2f)', x_stag(i), y_stag(i)), ...
+                'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold', 'BackgroundColor', 'w');
+        end
+    end
+    
     axis equal;
     xlim([-3, 3]);
     ylim([-3, 3]);
@@ -83,7 +107,11 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
         title(['Flow with Circulation: W(z) = v_0(z + a^2/z) - i\mu/z, \mu = ' num2str(mu)]);
     end
     
-    legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Location', 'best');
+    if ~isempty(x_stag)
+        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Stagnation points', 'Location', 'southwest');
+    else
+        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Location', 'southwest');
+    end
     hold off;
     
     %% Calculate velocity field
@@ -106,54 +134,69 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     
     %% Figure 2: Velocity Field Analysis
     figure(fig_start + 1)
-    set(gcf, 'Position', [100, 100, 1200, 500]);
+    set(gcf, 'Position', [100, 100, 800, 700]);
     
-    % Streamlines with velocity field
-    subplot(1, 2, 1)
-    hold on;
-    contour(X, Y, psi, 30, 'm');  % Streamlines
-    % Subsample grid for quiver plot
-    skip = 15;
-    quiver(X(1:skip:end, 1:skip:end), Y(1:skip:end, 1:skip:end), ...
-           u(1:skip:end, 1:skip:end), v(1:skip:end, 1:skip:end), 1.5, 'k');
-    fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);
-    plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
-    axis equal;
-    xlim([-3, 3]);
-    ylim([-3, 3]);
-    xlabel('Real(z)');
-    ylabel('Imag(z)');
-    title('Streamlines with Velocity Vectors');
-    hold off;
+    % % Streamlines with velocity field
+    % subplot(1, 2, 1)
+    % hold on;
+    % contour(X, Y, psi, 30, 'm');  % Streamlines
+    % % Subsample grid for quiver plot
+    % skip = 15;
+    % quiver(X(1:skip:end, 1:skip:end), Y(1:skip:end, 1:skip:end), ...
+    %        u(1:skip:end, 1:skip:end), v(1:skip:end, 1:skip:end), 1.5, 'k');
+    % fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);
+    % plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    % axis equal;
+    % xlim([-3, 3]);
+    % ylim([-3, 3]);
+    % xlabel('Real(z)');
+    % ylabel('Imag(z)');
+    % title('Streamlines with Velocity Vectors');
+    % hold off;
     
     % Velocity magnitude
-    subplot(1, 2, 2)
     hold on;
     contourf(X, Y, vel_mag, 20, 'LineStyle', 'none');
     colorbar;
     fill(x_cyl, y_cyl, [0.5, 0.5, 0.5]);
-    plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    
+    % Plot stagnation points on velocity magnitude plot
+    if ~isempty(x_stag)
+        h_stag = plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
+        legend([h_cyl, h_stag], {'Cylinder', 'Stagnation Points'}, 'Location', 'southwest');
+    else
+        legend(h_cyl, 'Cylinder', 'Location', 'southwest');
+    end
+    
     axis equal;
     xlim([-3, 3]);
     ylim([-3, 3]);
     xlabel('Real(z)');
     ylabel('Imag(z)');
-    title('Velocity Magnitude |V|');
-    hold off;
     
     if mu == 0
-        sgtitle('Flow Around Cylinder - Velocity Field Analysis');
+        title('Velocity Magnitude |V| - Flow Around Cylinder');
     else
-        sgtitle('Flow Around Cylinder with Circulation - Velocity Field Analysis');
+        title('Velocity Magnitude |V| - Flow with Circulation');
     end
+    hold off;
     
     %% Print Analysis
     fprintf('Cylinder radius: a = %.2f\n', a);
     fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
     fprintf('Circulation parameter: mu = %.2f\n', mu);
     
+    if ~isempty(x_stag)
+        fprintf('Stagnation points:\n');
+        for i = 1:length(x_stag)
+            fprintf('  z_%d = %.4f + %.4fi (r = %.4f)\n', i, x_stag(i), y_stag(i), sqrt(x_stag(i)^2 + y_stag(i)^2));
+        end
+    else
+        fprintf('No stagnation points outside cylinder\n');
+    end
+    
     if mu == 0
-        fprintf('Stagnation points: z = ±%.2f (at x = ±%.2f, y = 0)\n', a, a);
         fprintf('Maximum velocity on surface: |V_max| = 2*v_0 = %.2f (at top/bottom)\n', 2*v_0);
     else
         fprintf('Note: Circulation breaks symmetry and shifts stagnation points\n');
