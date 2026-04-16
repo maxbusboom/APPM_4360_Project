@@ -93,32 +93,36 @@ title(['Vortex Flow: W(z) = i·k·log(z-a), k = ' num2str(k_vortex)]);
 legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Vortex center', 'Location', 'best');
 hold off;
 
-%% Doublet Flow (W(z) = u/(z-a))
-u = 1 + 0.5i;  % Complex constant (doublet strength and orientation)
-u_r = real(u);
-u_i = imag(u);
+%% Doublet Flow (W(z) = mu/z)
+% For doublet at origin with real strength mu
+mu = 2;  % Real doublet strength (purely real for streamline on real axis)
+a_doublet = 0;  % Doublet at origin
 
-% Complex potential: W(z) = u/(z-a) = u/[r*e^(i*theta)]
-% Using Cartesian decomposition:
-% W(z) = (u_r + i*u_i) * [(x-a_x) - i*(y-a_y)]/r^2
-% Real part (velocity potential): phi = [u_r*(x-a_x) + u_i*(y-a_y)]/r^2
-% Imaginary part (stream function): psi = [u_i*(x-a_x) - u_r*(y-a_y)]/r^2
-phi_doublet = (u_r*(X - a_x) + u_i*(Y - a_y)) ./ (r.^2);
-psi_doublet = (u_i*(X - a_x) - u_r*(Y - a_y)) ./ (r.^2);
+% Calculate distances from doublet center (origin)
+r_doublet = sqrt(X.^2 + Y.^2);
+r_doublet(r_doublet < 0.1) = NaN;  % Avoid singularity
+
+% Complex potential: W(z) = mu/z = mu/(x+iy) = mu*(x-iy)/(x^2+y^2)
+% Real part (velocity potential): phi = mu*x/(x^2+y^2)
+% Imaginary part (stream function): psi = -mu*y/(x^2+y^2)
+% Note: psi = 0 when y = 0 (the real axis is a streamline!)
+phi_doublet = mu * X ./ (r_doublet.^2);
+psi_doublet = -mu * Y ./ (r_doublet.^2);
 
 figure(4)
 set(gcf, 'Position', [100, 100, 800, 700]);
 hold on;
 contour(X, Y, psi_doublet, 30, 'm');  % Streamlines (magenta)
 contour(X, Y, phi_doublet, 30, 'b--');  % Equipotental lines (blue dashed)
-plot(a_x, a_y, 'ko', 'MarkerSize', 10, 'MarkerFaceColor', 'k');
+plot(0, 0, 'ko', 'MarkerSize', 10, 'MarkerFaceColor', 'k');
+%plot([-3, 3], [0, 0], 'm-', 'LineWidth', 2);  % Real axis streamline
 axis equal;
 xlim([-3, 3]);
 ylim([-3, 3]);
 xlabel('Real(z)');
 ylabel('Imag(z)');
-title(['Doublet Flow: W(z) = \mu/(z-a), \mu = ' num2str(u)]);
-legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Doublet location', 'Location', 'best');
+title(['Doublet Flow: W(z) = \mu/z, \mu = ' num2str(mu)]);
+legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Doublet at origin', 'Real axis (\psi=0)', 'Location', 'best');
 hold off;
 
 %% Combined Comparison Plot
@@ -161,11 +165,12 @@ subplot(2, 2, 4)
 hold on;
 contour(X, Y, psi_doublet, 30, 'm');
 contour(X, Y, phi_doublet, 30, 'b--');
-plot(a_x, a_y, 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
+plot(0, 0, 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
+%plot([-3, 3], [0, 0], 'm-', 'LineWidth', 1.5);  % Real axis streamline
 axis equal;
 xlim([-3, 3]); ylim([-3, 3]);
 xlabel('Real(z)'); ylabel('Imag(z)');
-title('Doublet (\mu/(z-a))');
+title('Doublet (\mu/z)');
 hold off;
 
 % Add global legend for the comparison plot
@@ -176,8 +181,9 @@ Lh.Position(2) = 0.02;  % Bottom of figure
 sgtitle('Elementary Flows in the Complex Plane');
 
 fprintf('Plots generated successfully!\n');
-fprintf('Source/Sink/Vortex/Doublet location: a = %.2f + %.2fi\n', a_x, a_y);
+fprintf('Source/Sink/Vortex location: a = %.2f + %.2fi\n', a_x, a_y);
+fprintf('Doublet location: origin (0, 0)\n');
 fprintf('Source strength: k = %.2f\n', k_source);
 fprintf('Sink strength: k = %.2f\n', k_sink);
 fprintf('Vortex circulation: Γ = 2πk = %.2f\n', 2*pi*k_vortex);
-fprintf('Doublet strength: μ = %.2f + %.2fi\n', u_r, u_i);
+fprintf('Doublet strength: μ = %.2f (real axis is streamline)\n', mu);
