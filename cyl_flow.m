@@ -57,6 +57,18 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     phi(inside_cylinder) = NaN;
     psi(inside_cylinder) = NaN;
     
+    %% Compute Singularities
+    % Singularities occur where the complex potential W(z) is undefined
+    % For W(z) = v_0(z + a^2/z) - i*mu/z:
+    % - Singularity at z = 0 from the 1/z terms (doublet and circulation)
+    x_sing = [0];
+    y_sing = [0];
+    
+    % Filter singularities outside the cylinder
+    sing_outside = sqrt(x_sing.^2 + y_sing.^2) >= a;
+    x_sing = x_sing(sing_outside);
+    y_sing = y_sing(sing_outside);
+    
     %% Compute Stagnation Points
     % Stagnation points occur where dW/dz = 0
     % dW/dz = v_0(1 - a^2/z^2) + i*mu/z^2 = 0
@@ -85,6 +97,11 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);  % Gray filled cylinder
     plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);  % Cylinder boundary
     
+    % Plot singularities
+    if ~isempty(x_sing)
+        plot(x_sing, y_sing, 'x', 'MarkerSize', 14, 'Color', [0, 0.4, 0.8], 'LineWidth', 3);
+    end
+    
     % Plot stagnation points
     if ~isempty(x_stag)
         plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
@@ -107,7 +124,11 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
         title(['Flow with Circulation: W(z) = v_0(z + a^2/z) - i\mu/z, \mu = ' num2str(mu)]);
     end
     
-    if ~isempty(x_stag)
+    if ~isempty(x_stag) && ~isempty(x_sing)
+        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Singularities', 'Stagnation points', 'Location', 'southwest');
+    elseif ~isempty(x_sing)
+        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Singularities', 'Location', 'southwest');
+    elseif ~isempty(x_stag)
         legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Stagnation points', 'Location', 'southwest');
     else
         legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Location', 'southwest');
@@ -161,8 +182,18 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     fill(x_cyl, y_cyl, [0.5, 0.5, 0.5]);
     h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
     
+    % Plot singularities on velocity magnitude plot
+    if ~isempty(x_sing)
+        h_sing = plot(x_sing, y_sing, 'x', 'MarkerSize', 14, 'Color', [0, 0.4, 0.8], 'LineWidth', 3);
+    end
+    
     % Plot stagnation points on velocity magnitude plot
-    if ~isempty(x_stag)
+    if ~isempty(x_stag) && ~isempty(x_sing)
+        h_stag = plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
+        legend([h_cyl, h_sing, h_stag], {'Cylinder', 'Singularities', 'Stagnation Points'}, 'Location', 'southwest');
+    elseif ~isempty(x_sing)
+        legend([h_cyl, h_sing], {'Cylinder', 'Singularities'}, 'Location', 'southwest');
+    elseif ~isempty(x_stag)
         h_stag = plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
         legend([h_cyl, h_stag], {'Cylinder', 'Stagnation Points'}, 'Location', 'southwest');
     else
@@ -186,6 +217,13 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     fprintf('Cylinder radius: a = %.2f\n', a);
     fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
     fprintf('Circulation parameter: mu = %.2f\n', mu);
+    
+    if ~isempty(x_sing)
+        fprintf('Singularities:\n');
+        for i = 1:length(x_sing)
+            fprintf('  z_%d = %.4f + %.4fi\n', i, x_sing(i), y_sing(i));
+        end
+    end
     
     if ~isempty(x_stag)
         fprintf('Stagnation points:\n');
