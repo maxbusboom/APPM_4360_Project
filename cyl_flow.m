@@ -25,6 +25,10 @@ plot_cylinder_flow(X, Y, a, v_0, 0, 1);
 fprintf('\n=== Flow with circulation ===\n');
 plot_cylinder_flow(X, Y, a, v_0, mu, 3);
 
+%% Stagnation Point Trajectory Analysis
+fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
+plot_stagnation_trajectory(a, v_0, 5);
+
 %% Function Definitions
 
 function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
@@ -239,4 +243,88 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     else
         fprintf('Note: Circulation breaks symmetry and shifts stagnation points\n');
     end
+end
+
+function plot_stagnation_trajectory(a, v_0, fig_num)
+    % Plot trajectory of stagnation points as circulation parameter mu varies
+    % Inputs:
+    %   a - cylinder radius
+    %   v_0 - free stream velocity
+    %   fig_num - figure number
+    
+    % Range of mu values to explore
+    mu_values = linspace(0, 4*v_0*a, 200);
+    
+    % Storage for stagnation point trajectories
+    % Two branches: positive and negative sqrt
+    stag_pos_x = zeros(size(mu_values));
+    stag_pos_y = zeros(size(mu_values));
+    stag_neg_x = zeros(size(mu_values));
+    stag_neg_y = zeros(size(mu_values));
+    
+    % Compute stagnation points for each mu
+    for i = 1:length(mu_values)
+        mu = mu_values(i);
+        % Stagnation points: z^2 = a^2 - i*mu/v_0
+        z_squared = a^2 - 1i*mu/v_0;
+        z_pos = sqrt(z_squared);
+        z_neg = -sqrt(z_squared);
+        
+        stag_pos_x(i) = real(z_pos);
+        stag_pos_y(i) = imag(z_pos);
+        stag_neg_x(i) = real(z_neg);
+        stag_neg_y(i) = imag(z_neg);
+    end
+    
+    % Create figure
+    figure(fig_num)
+    set(gcf, 'Position', [100, 100, 800, 700]);
+    hold on;
+    
+    % Draw cylinder
+    theta_cyl = linspace(0, 2*pi, 100);
+    x_cyl = a * cos(theta_cyl);
+    y_cyl = a * sin(theta_cyl);
+    fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);
+    plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    
+    % Plot trajectories
+    h1 = plot(stag_pos_x, stag_pos_y, 'r-', 'LineWidth', 2);
+    h2 = plot(stag_neg_x, stag_neg_y, 'b-', 'LineWidth', 2);
+    
+    % Mark specific mu values
+    mu_markers = [0, v_0*a, 2*v_0*a, 3*v_0*a, 4*v_0*a];
+    for mu_mark = mu_markers
+        [~, idx] = min(abs(mu_values - mu_mark));
+        plot(stag_pos_x(idx), stag_pos_y(idx), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
+        plot(stag_neg_x(idx), stag_neg_y(idx), 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
+        
+        % Label only non-zero mu values
+        if mu_mark > 0
+            text(stag_pos_x(idx) + 0.15, stag_pos_y(idx), sprintf('\\mu=%.1f', mu_mark), ...
+                'FontSize', 9, 'Color', 'r');
+            text(stag_neg_x(idx) - 0.15, stag_neg_y(idx), sprintf('\\mu=%.1f', mu_mark), ...
+                'FontSize', 9, 'Color', 'b', 'HorizontalAlignment', 'right');
+        end
+    end
+    
+    % Mark initial position (mu = 0)
+    plot(a, 0, 'ko', 'MarkerSize', 12, 'MarkerFaceColor', 'k');
+    plot(-a, 0, 'ko', 'MarkerSize', 12, 'MarkerFaceColor', 'k');
+    text(a + 0.15, 0, '\mu=0', 'FontSize', 9, 'Color', 'k');
+    
+    axis equal;
+    xlim([-3, 3]);
+    ylim([-3, 3]);
+    xlabel('Real(z)');
+    ylabel('Imag(z)');
+    title(sprintf('Stagnation Point Trajectories as \\mu varies (0 to %.1f)', max(mu_values)));
+    legend([h1, h2], {'Branch 1: +sqrt', 'Branch 2: -sqrt'}, 'Location', 'southwest');
+    grid on;
+    hold off;
+    
+    fprintf('Stagnation point trajectory computed for mu in [0, %.2f]\n', max(mu_values));
+    fprintf('At mu = 0: stagnation points at z = +/-%.2f (on real axis)\n', a);
+    fprintf('As mu increases: points move off real axis in complex plane\n');
+    fprintf('Critical mu = %.2f: stagnation points merge at origin\n', 2*v_0*a);
 end
