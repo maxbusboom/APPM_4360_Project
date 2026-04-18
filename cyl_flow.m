@@ -18,8 +18,8 @@ y = linspace(-3, 3, 400);
 %% Generate Plots
 
 %Flow without circulation
-fprintf('=== Flow without circulation ===\n');
-plot_cylinder_flow(X, Y, a, v_0, 0, 1);
+%fprintf('=== Flow without circulation ===\n');
+%plot_cylinder_flow(X, Y, a, v_0, 0, 1);
 
 %Stagnation Point Trajectory Analysis
 fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
@@ -30,8 +30,8 @@ fprintf('\n=== Vortex Flow Stagnation Point Trajectory Analysis ===\n');
 plot_stagnation_trajectory_vortex(a, v_0, 4);
 
  %Flow with circulation
-fprintf('\n=== Flow with circulation ===\n');
-plot_cylinder_flow(X, Y, a, v_0, mu, 5);
+%fprintf('\n=== Flow with circulation ===\n');
+%plot_cylinder_flow(X, Y, a, v_0, mu, 5);
 
 % Flow with log circulation
 fprintf('\n=== Flow with circulation (log formulation) ===\n');
@@ -637,7 +637,7 @@ function plot_stagnation_trajectory_vortex(a, v_0, fig_num)
     h2 = plot(stag_neg_x, stag_neg_y, 'b-', 'LineWidth', 2);
     
     % Mark specific mu values
-    mu_markers = [0, 2, 4, 6, 8];
+    mu_markers = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     for mu_mark = mu_markers
         [~, idx] = min(abs(mu_values - mu_mark));
         plot(stag_pos_x(idx), stag_pos_y(idx), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
