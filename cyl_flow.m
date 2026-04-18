@@ -15,7 +15,7 @@ x = linspace(-3, 3, 400);
 y = linspace(-3, 3, 400);
 [X, Y] = meshgrid(x, y);
 
-%% Generate Plots
+%% Generate Plots (uncomment to visualize)
 
 %Flow without circulation
 %fprintf('=== Flow without circulation ===\n');
