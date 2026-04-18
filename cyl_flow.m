@@ -17,34 +17,42 @@ y = linspace(-3, 3, 400);
 
 %% Generate Plots
 
-% Flow without circulation
-%fprintf('=== Flow without circulation ===\n');
-%plot_cylinder_flow(X, Y, a, v_0, 0, 1);
+%Flow without circulation
+fprintf('=== Flow without circulation ===\n');
+plot_cylinder_flow(X, Y, a, v_0, 0, 1);
 
-% Stagnation Point Trajectory Analysis
-%fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
-%plot_stagnation_trajectory(a, v_0, 3);
+%Stagnation Point Trajectory Analysis
+fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
+plot_stagnation_trajectory(a, v_0, 3);
 
-% Flow with circulation
-%fprintf('\n=== Flow with circulation ===\n');
-%plot_cylinder_flow(X, Y, a, v_0, mu, 5);
+% Vortex Flow Stagnation Point Trajectory Analysis
+fprintf('\n=== Vortex Flow Stagnation Point Trajectory Analysis ===\n');
+plot_stagnation_trajectory_vortex(a, v_0, 4);
+
+ %Flow with circulation
+fprintf('\n=== Flow with circulation ===\n');
+plot_cylinder_flow(X, Y, a, v_0, mu, 5);
+
+% Flow with log circulation
+fprintf('\n=== Flow with circulation (log formulation) ===\n');
+plot_cylinder_flow(X, Y, a, v_0, 5, 7, 'cylinder_log');
 
 %% Elementary Flows (uncomment to visualize)
 % Doublet flow
 % fprintf('\n=== Doublet Flow ===\n');
-% plot_cylinder_flow(X, Y, a, 2, 0, 7, 'doublet');
+% plot_cylinder_flow(X, Y, a, 2, 0, 9, 'doublet');
 
 % Vortex flow
-fprintf('\n=== Vortex Flow ===\n');
-plot_cylinder_flow(X, Y, a, v_0, 2, 9, 'vortex');
+%fprintf('\n=== Vortex Flow ===\n');
+%plot_cylinder_flow(X, Y, a, v_0, 2, 11, 'vortex');
 
 % Source flow
 %fprintf('\n=== Source Flow ===\n');
-%plot_cylinder_flow(X, Y, a, v_0, 1.5, 11, 'source');
+%plot_cylinder_flow(X, Y, a, v_0, 1.5, 13, 'source');
 
 % Sink flow
 % fprintf('\n=== Sink Flow ===\n');
-% plot_cylinder_flow(X, Y, a, v_0, -1.5, 13, 'source');
+% plot_cylinder_flow(X, Y, a, v_0, -1.5, 15, 'source');
 
 %% Function Definitions
 
@@ -114,8 +122,18 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             phi(inside_cylinder) = NaN;
             psi(inside_cylinder) = NaN;
             
+        case 'cylinder_log'
+            % Cylinder Flow with Log Circulation: W(z) = v_0(z + a^2/z) - i*mu*log(z)/(2*pi)
+            % This uses the standard vortex formulation: -i*Gamma*log(z)/(2*pi)
+            % Real part: phi = v_0(x + a^2*x/r^2) + mu*theta/(2*pi)
+            % Imaginary part: psi = v_0(y - a^2*y/r^2) - mu*log(r)/(2*pi)
+            phi = v_0 * (X + a^2 * X ./ r2) + mu * theta / (2*pi);
+            psi = v_0 * (Y - a^2 * Y ./ r2) - mu * log(r) / (2*pi);
+            phi(inside_cylinder) = NaN;
+            psi(inside_cylinder) = NaN;
+            
         otherwise
-            error('Unknown flow_type: %s. Use ''cylinder'', ''doublet'', ''vortex'', or ''source''.', flow_type);
+            error('Unknown flow_type: %s. Use ''cylinder'', ''doublet'', ''vortex'', ''source'', or ''cylinder_log''.', flow_type);
     end
     
     %% Compute Singularities
@@ -129,7 +147,7 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             % For W(z) = mu_d/z: singularity at z = 0
             x_sing = [0];
             y_sing = [0];
-        case {'vortex', 'source'}
+        case {'vortex', 'source', 'cylinder_log'}
             % For W(z) = k*log(z): singularity at z = 0
             x_sing = [0];
             y_sing = [0];
@@ -191,30 +209,45 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
             x_stag = x_stag(stag_outside);
             y_stag = y_stag(stag_outside);
+            
+        case 'cylinder_log'
+            % dW/dz = v_0(1 - a^2/z^2) - i*mu/(2*pi*z) = 0
+            % Multiply by z^2: v_0*z^2 - v_0*a^2 - i*mu*z/(2*pi) = 0
+            % Quadratic: v_0*z^2 - i*mu*z/(2*pi) - v_0*a^2 = 0
+            % z = [i*mu/(2*pi) ± sqrt(-mu^2/(4*pi^2) + 4*v_0^2*a^2)] / (2*v_0)
+            discriminant = -mu^2/(4*pi^2) + 4*v_0^2*a^2;
+            z_stag = [(1i*mu/(2*pi) + sqrt(discriminant))/(2*v_0); ...
+                      (1i*mu/(2*pi) - sqrt(discriminant))/(2*v_0)];
+            x_stag = real(z_stag);
+            y_stag = imag(z_stag);
+            % Filter stagnation points outside the cylinder
+            stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
+            x_stag = x_stag(stag_outside);
+            y_stag = y_stag(stag_outside);
     end
     
     %% Figure 1: Streamlines and Equipotential Lines
     figure(fig_start)
     set(gcf, 'Position', [100, 100, 800, 700]);
     hold on;
-    contour(X, Y, psi, 30, 'm');  % Streamlines (magenta)
-    contour(X, Y, phi, 30, 'b--');  % Equipotential lines (blue dashed)
+    h_stream = contour(X, Y, psi, 30, 'm');  % Streamlines (magenta)
+    h_equip = contour(X, Y, phi, 30, 'b--');  % Equipotential lines (blue dashed)
     
     % Draw the cylinder (for all flow types)
     theta_cyl = linspace(0, 2*pi, 100);
     x_cyl = a * cos(theta_cyl);
     y_cyl = a * sin(theta_cyl);
     fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);  % Gray filled cylinder
-    plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);  % Cylinder boundary
+    h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);  % Cylinder boundary
     
     % Plot singularities
     if ~isempty(x_sing)
-        plot(x_sing, y_sing, 'x', 'MarkerSize', 14, 'Color', [0, 0.4, 0.8], 'LineWidth', 3);
+        h_sing = plot(x_sing, y_sing, 'x', 'MarkerSize', 14, 'Color', [0, 0.4, 0.8], 'LineWidth', 3);
     end
     
     % Plot stagnation points
     if ~isempty(x_stag)
-        plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
+        h_stag = plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
         % Label stagnation points
         for i = 1:length(x_stag)
             text(x_stag(i), y_stag(i) + 0.25, sprintf('Stag (%.2f, %.2f)', x_stag(i), y_stag(i)), ...
@@ -246,20 +279,28 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             else
                 title(['Sink Around Cylinder: W(z) = v_0(z + a^2/z) + Q log(z/a), Q = ' num2str(mu)]);
             end
+        case 'cylinder_log'
+            title(['Flow with Circulation (Log): W(z) = v_0(z + a^2/z) - i\mu log(z)/(2\pi), \mu = ' num2str(mu)]);
     end
     
-    % Build legend based on what's plotted
-    legend_items = {'Streamlines (\psi)', 'Equipotential lines (\phi)'};
-    if strcmp(lower(flow_type), 'cylinder')
-        legend_items{end+1} = 'Cylinder';
+    % Build legend based on what's plotted using explicit handles
+    legend_handles = [h_stream(1), h_equip(1)];
+    legend_labels = {'Streamlines (\psi)', 'Equipotential lines (\phi)'};
+    
+    legend_handles(end+1) = h_cyl;
+    legend_labels{end+1} = 'Cylinder';
+    
+    if ~isempty(x_sing) && exist('h_sing', 'var')
+        legend_handles(end+1) = h_sing;
+        legend_labels{end+1} = 'Singularities';
     end
-    if ~isempty(x_sing)
-        legend_items{end+1} = 'Singularities';
+    if ~isempty(x_stag) && exist('h_stag', 'var')
+        legend_handles(end+1) = h_stag;
+        legend_labels{end+1} = 'Stagnation points';
     end
-    if ~isempty(x_stag)
-        legend_items{end+1} = 'Stagnation points';
-    end
-    legend(legend_items, 'Location', 'southwest');
+    lgd = legend(legend_handles, legend_labels, 'Location', 'southwest', 'FontSize', 7);
+    lgd.Position(1) = 0.3;  % Move legend slightly right from left edge
+    lgd.Position(2) = 0.15;  % Move legend slightly up from bottom edge
     hold off;
     
     %% Calculate velocity field
@@ -302,6 +343,15 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             v = v_0 * (2 * a^2 * X .* Y ./ r4) + mu * Y ./ r2;
             u(inside_cylinder) = NaN;
             v(inside_cylinder) = NaN;
+            
+        case 'cylinder_log'
+            % Cylinder with Log Circulation: dW/dz = v_0(1 - a^2/z^2) - i*mu/(2*pi*z)
+            % u = v_0(1 - a^2*(x^2 - y^2)/r^4) - mu*y/(2*pi*r^2)
+            % v = v_0(2*a^2*x*y/r^4) - mu*x/(2*pi*r^2)
+            u = v_0 * (1 - a^2 * (X.^2 - Y.^2) ./ r4) - mu * Y ./ (2*pi*r2);
+            v = v_0 * (2 * a^2 * X .* Y ./ r4) - mu * X ./ (2*pi*r2);
+            u(inside_cylinder) = NaN;
+            v(inside_cylinder) = NaN;
     end
     
     % Velocity magnitude
@@ -334,14 +384,12 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
     contourf(X, Y, vel_mag, 20, 'LineStyle', 'none');
     colorbar;
     
-    % Draw cylinder (only for cylinder flow)
-    if strcmp(lower(flow_type), 'cylinder')
-        theta_cyl = linspace(0, 2*pi, 100);
-        x_cyl = a * cos(theta_cyl);
-        y_cyl = a * sin(theta_cyl);
-        fill(x_cyl, y_cyl, [0.5, 0.5, 0.5]);
-        h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
-    end
+    % Draw cylinder (for all flow types)
+    theta_cyl = linspace(0, 2*pi, 100);
+    x_cyl = a * cos(theta_cyl);
+    y_cyl = a * sin(theta_cyl);
+    fill(x_cyl, y_cyl, [0.5, 0.5, 0.5]);
+    h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
     
     % Plot singularities on velocity magnitude plot
     if ~isempty(x_sing)
@@ -354,12 +402,8 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
     end
     
     % Build legend dynamically
-    legend_handles = [];
-    legend_labels = {};
-    if strcmp(lower(flow_type), 'cylinder') && exist('h_cyl', 'var')
-        legend_handles(end+1) = h_cyl;
-        legend_labels{end+1} = 'Cylinder';
-    end
+    legend_handles = [h_cyl];
+    legend_labels = {'Cylinder'};
     if ~isempty(x_sing) && exist('h_sing', 'var')
         legend_handles(end+1) = h_sing;
         legend_labels{end+1} = 'Singularities';
@@ -369,7 +413,9 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
         legend_labels{end+1} = 'Stagnation Points';
     end
     if ~isempty(legend_handles)
-        legend(legend_handles, legend_labels, 'Location', 'southwest');
+        lgd = legend(legend_handles, legend_labels, 'Location', 'southwest', 'FontSize', 7);
+        lgd.Position(1) = 0.30;  % Move legend slightly right from left edge
+        lgd.Position(2) = 0.15;  % Move legend slightly up from bottom edge
     end
     
     axis equal;
@@ -396,6 +442,8 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             else
                 title('Velocity Magnitude |V| - Sink Around Cylinder');
             end
+        case 'cylinder_log'
+            title('Velocity Magnitude |V| - Flow with Circulation (Log)');
     end
     hold off;
     
@@ -410,6 +458,11 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
             fprintf('Flow type: Doublet around cylinder\n');
             fprintf('Cylinder radius: a = %.2f\n', a);
             fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
+        case 'cylinder_log'
+            fprintf('Flow type: Cylinder flow with log circulation\n');
+            fprintf('Cylinder radius: a = %.2f\n', a);
+            fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
+            fprintf('Circulation: Gamma = %.2f\n', mu);
         case 'vortex'
             fprintf('Flow type: Vortex around cylinder\n');
             fprintf('Cylinder radius: a = %.2f\n', a);
@@ -457,7 +510,7 @@ function plot_stagnation_trajectory(a, v_0, fig_num)
     %   fig_num - figure number
     
     % Range of mu values to explore
-    mu_values = linspace(0, 4*v_0*a, 200);
+    mu_values = linspace(0, 8, 200);
     
     % Storage for stagnation point trajectories
     % Two branches: positive and negative sqrt
@@ -497,7 +550,7 @@ function plot_stagnation_trajectory(a, v_0, fig_num)
     h2 = plot(stag_neg_x, stag_neg_y, 'b-', 'LineWidth', 2);
     
     % Mark specific mu values
-    mu_markers = [0, v_0*a, 2*v_0*a, 3*v_0*a, 4*v_0*a];
+    mu_markers = [0, 2, 4, 6, 8];
     for mu_mark = mu_markers
         [~, idx] = min(abs(mu_values - mu_mark));
         plot(stag_pos_x(idx), stag_pos_y(idx), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
@@ -531,4 +584,91 @@ function plot_stagnation_trajectory(a, v_0, fig_num)
     fprintf('At mu = 0: stagnation points at z = +/-%.2f (on real axis)\n', a);
     fprintf('As mu increases: points move off real axis in complex plane\n');
     fprintf('Critical mu = %.2f: stagnation points merge at origin\n', 2*v_0*a);
+end
+
+function plot_stagnation_trajectory_vortex(a, v_0, fig_num)
+    % Plot trajectory of stagnation points for vortex flow as mu varies
+    % For vortex flow: dW/dz = v_0(1 - a^2/z^2) + i*mu/z = 0
+    % Stagnation points: z = [-i*mu ± sqrt(-mu^2 + 4*v_0^2*a^2)] / (2*v_0)
+    % Inputs:
+    %   a - cylinder radius
+    %   v_0 - free stream velocity
+    %   fig_num - figure number
+    
+    % Range of mu values to explore
+    mu_values = linspace(0, 8, 200);
+    
+    % Storage for stagnation point trajectories
+    % Two branches: positive and negative sqrt
+    stag_pos_x = zeros(size(mu_values));
+    stag_pos_y = zeros(size(mu_values));
+    stag_neg_x = zeros(size(mu_values));
+    stag_neg_y = zeros(size(mu_values));
+    
+    % Compute stagnation points for each mu
+    for i = 1:length(mu_values)
+        mu = mu_values(i);
+        % Stagnation points: v_0*z^2 + i*mu*z - v_0*a^2 = 0
+        % z = [-i*mu ± sqrt(-mu^2 + 4*v_0^2*a^2)] / (2*v_0)
+        discriminant = -mu^2 + 4*v_0^2*a^2;
+        z_pos = (-1i*mu + sqrt(discriminant))/(2*v_0);
+        z_neg = (-1i*mu - sqrt(discriminant))/(2*v_0);
+        
+        stag_pos_x(i) = real(z_pos);
+        stag_pos_y(i) = imag(z_pos);
+        stag_neg_x(i) = real(z_neg);
+        stag_neg_y(i) = imag(z_neg);
+    end
+    
+    % Create figure
+    figure(fig_num)
+    set(gcf, 'Position', [100, 100, 800, 700]);
+    hold on;
+    
+    % Draw cylinder
+    theta_cyl = linspace(0, 2*pi, 100);
+    x_cyl = a * cos(theta_cyl);
+    y_cyl = a * sin(theta_cyl);
+    fill(x_cyl, y_cyl, [0.8, 0.8, 0.8]);
+    plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    
+    % Plot trajectories
+    h1 = plot(stag_pos_x, stag_pos_y, 'r-', 'LineWidth', 2);
+    h2 = plot(stag_neg_x, stag_neg_y, 'b-', 'LineWidth', 2);
+    
+    % Mark specific mu values
+    mu_markers = [0, 2, 4, 6, 8];
+    for mu_mark = mu_markers
+        [~, idx] = min(abs(mu_values - mu_mark));
+        plot(stag_pos_x(idx), stag_pos_y(idx), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
+        plot(stag_neg_x(idx), stag_neg_y(idx), 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
+        
+        % Label only non-zero mu values
+        if mu_mark > 0
+            text(stag_pos_x(idx) + 0.15, stag_pos_y(idx), sprintf('\\mu=%.1f', mu_mark), ...
+                'FontSize', 9, 'Color', 'r');
+            text(stag_neg_x(idx) - 0.15, stag_neg_y(idx), sprintf('\\mu=%.1f', mu_mark), ...
+                'FontSize', 9, 'Color', 'b', 'HorizontalAlignment', 'right');
+        end
+    end
+    
+    % Mark initial position (mu = 0)
+    plot(a, 0, 'ko', 'MarkerSize', 12, 'MarkerFaceColor', 'k');
+    plot(-a, 0, 'ko', 'MarkerSize', 12, 'MarkerFaceColor', 'k');
+    text(a + 0.15, 0, '\mu=0', 'FontSize', 9, 'Color', 'k');
+    
+    axis equal;
+    xlim([-3, 3]);
+    ylim([-3, 3]);
+    xlabel('Real(z)');
+    ylabel('Imag(z)');
+    title(sprintf('Vortex Flow: Stagnation Point Trajectories as \\mu varies (0 to %.1f)', max(mu_values)));
+    legend([h1, h2], {'Branch 1: +sqrt', 'Branch 2: -sqrt'}, 'Location', 'southwest', 'FontSize', 8);
+    grid on;
+    hold off;
+    
+    fprintf('Vortex flow stagnation point trajectory computed for mu in [0, %.2f]\n', max(mu_values));
+    fprintf('At mu = 0: stagnation points at z = +/-%.2f (on real axis)\n', a);
+    fprintf('As mu increases: points move in complex plane\n');
+    fprintf('Critical mu = %.2f: transition point where discriminant = 0\n', 2*v_0*a);
 end
