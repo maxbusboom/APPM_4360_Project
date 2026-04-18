@@ -18,74 +18,180 @@ y = linspace(-3, 3, 400);
 %% Generate Plots
 
 % Flow without circulation
-fprintf('=== Flow without circulation ===\n');
-plot_cylinder_flow(X, Y, a, v_0, 0, 1);
+%fprintf('=== Flow without circulation ===\n');
+%plot_cylinder_flow(X, Y, a, v_0, 0, 1);
 
 % Stagnation Point Trajectory Analysis
-fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
-plot_stagnation_trajectory(a, v_0, 3);
+%fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
+%plot_stagnation_trajectory(a, v_0, 3);
 
 % Flow with circulation
-fprintf('\n=== Flow with circulation ===\n');
-plot_cylinder_flow(X, Y, a, v_0, mu, 5);
+%fprintf('\n=== Flow with circulation ===\n');
+%plot_cylinder_flow(X, Y, a, v_0, mu, 5);
+
+%% Elementary Flows (uncomment to visualize)
+% Doublet flow
+% fprintf('\n=== Doublet Flow ===\n');
+% plot_cylinder_flow(X, Y, a, 2, 0, 7, 'doublet');
+
+% Vortex flow
+fprintf('\n=== Vortex Flow ===\n');
+plot_cylinder_flow(X, Y, a, v_0, 2, 9, 'vortex');
+
+% Source flow
+%fprintf('\n=== Source Flow ===\n');
+%plot_cylinder_flow(X, Y, a, v_0, 1.5, 11, 'source');
+
+% Sink flow
+% fprintf('\n=== Sink Flow ===\n');
+% plot_cylinder_flow(X, Y, a, v_0, -1.5, 13, 'source');
 
 %% Function Definitions
 
-function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
+function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start, flow_type)
     % Plot flow around cylinder with optional circulation term
     % Inputs:
     %   X, Y - meshgrid coordinates
     %   a - cylinder radius
-    %   v_0 - free stream velocity
-    %   mu - circulation parameter (0 for no circulation)
+    %   v_0 - free stream velocity (or doublet strength for doublet flow)
+    %   mu - circulation parameter (or source strength for source/vortex)
     %   fig_start - starting figure number
+    %   flow_type - (optional) 'cylinder' (default), 'doublet', 'vortex', or 'source'
+    
+    % Set default flow type
+    if nargin < 7
+        flow_type = 'cylinder';
+    end
     
     % Distance from origin
     r = sqrt(X.^2 + Y.^2);
+    theta = atan2(Y, X);
     
-    % Mask points inside the cylinder
+    % Mask points inside the cylinder and near singularity
     inside_cylinder = (r < a);
+    near_singularity = (r < 0.05);  % Small region around origin for elementary flows
     
-    %% Complex Potential: W(z) = v_0(z + a^2/z) - i*mu/z
-    % Without circulation (mu = 0): W(z) = v_0(z + a^2/z)
-    % With circulation (mu ≠ 0): W(z) = v_0(z + a^2/z) - i*mu/z
-    %
-    % Real part (velocity potential): phi = v_0(x + a^2*x/r^2) + mu*y/r^2
-    % Imaginary part (stream function): psi = v_0(y - a^2*y/r^2) - mu*x/r^2
-    
+    %% Complex Potential - depends on flow type
     r2 = r.^2;
-    phi = v_0 * (X + a^2 * X ./ r2) + mu * Y ./ r2;
-    psi = v_0 * (Y - a^2 * Y ./ r2) - mu * X ./ r2;
     
-    % Set interior points to NaN to avoid plotting inside cylinder
-    phi(inside_cylinder) = NaN;
-    psi(inside_cylinder) = NaN;
+    switch lower(flow_type)
+        case 'cylinder'
+            % Cylinder Flow with Circulation: W(z) = v_0(z + a^2/z) - i*mu/z
+            % Real part (velocity potential): phi = v_0(x + a^2*x/r^2) + mu*y/r^2
+            % Imaginary part (stream function): psi = v_0(y - a^2*y/r^2) - mu*x/r^2
+            phi = v_0 * (X + a^2 * X ./ r2) + mu * Y ./ r2;
+            psi = v_0 * (Y - a^2 * Y ./ r2) - mu * X ./ r2;
+            phi(inside_cylinder) = NaN;
+            psi(inside_cylinder) = NaN;
+            
+        case 'doublet'
+            % Doublet Flow Around Cylinder: W(z) = v_0(z + a^2/z)
+            % This is uniform flow + doublet (cylinder flow without circulation)
+            % Real part: phi = v_0(x + a^2*x/r^2)
+            % Imaginary part: psi = v_0(y - a^2*y/r^2)
+            phi = v_0 * (X + a^2 * X ./ r2);
+            psi = v_0 * (Y - a^2 * Y ./ r2);
+            phi(inside_cylinder) = NaN;
+            psi(inside_cylinder) = NaN;
+            
+        case 'vortex'
+            % Vortex Flow Around Cylinder: W(z) = v_0(z + a^2/z) + i*mu*log(z/a)
+            % Uniform flow + doublet + vortex
+            % Real part: phi = v_0(x + a^2*x/r^2) - mu*theta
+            % Imaginary part: psi = v_0(y - a^2*y/r^2) + mu*log(r/a)
+            phi = v_0 * (X + a^2 * X ./ r2) - mu * theta;
+            psi = v_0 * (Y - a^2 * Y ./ r2) + mu * log(r/a);
+            phi(inside_cylinder) = NaN;
+            psi(inside_cylinder) = NaN;
+            
+        case 'source'
+            % Source Flow Around Cylinder: W(z) = v_0(z + a^2/z) + mu*log(z/a)
+            % Uniform flow + doublet + source
+            % Real part: phi = v_0(x + a^2*x/r^2) + mu*log(r/a)
+            % Imaginary part: psi = v_0(y - a^2*y/r^2) + mu*theta
+            phi = v_0 * (X + a^2 * X ./ r2) + mu * log(r/a);
+            psi = v_0 * (Y - a^2 * Y ./ r2) + mu * theta;
+            phi(inside_cylinder) = NaN;
+            psi(inside_cylinder) = NaN;
+            
+        otherwise
+            error('Unknown flow_type: %s. Use ''cylinder'', ''doublet'', ''vortex'', or ''source''.', flow_type);
+    end
     
     %% Compute Singularities
     % Singularities occur where the complex potential W(z) is undefined
-    % For W(z) = v_0(z + a^2/z) - i*mu/z:
-    % - Singularity at z = 0 from the 1/z terms (doublet and circulation)
-    x_sing = [0];
-    y_sing = [0];
+    switch lower(flow_type)
+        case 'cylinder'
+            % For W(z) = v_0(z + a^2/z) - i*mu/z: singularity at z = 0 from 1/z terms
+            x_sing = [0];
+            y_sing = [0];
+        case 'doublet'
+            % For W(z) = mu_d/z: singularity at z = 0
+            x_sing = [0];
+            y_sing = [0];
+        case {'vortex', 'source'}
+            % For W(z) = k*log(z): singularity at z = 0
+            x_sing = [0];
+            y_sing = [0];
+    end
     
-    % Filter singularities outside the cylinder
+    % Filter singularities outside the cylinder (for all flow types)
+    % Only plot singularities with r >= a
     sing_outside = sqrt(x_sing.^2 + y_sing.^2) >= a;
     x_sing = x_sing(sing_outside);
     y_sing = y_sing(sing_outside);
     
     %% Compute Stagnation Points
     % Stagnation points occur where dW/dz = 0
-    % dW/dz = v_0(1 - a^2/z^2) + i*mu/z^2 = 0
-    % Solving: z^2 = a^2 - i*mu/v_0
-    z_squared = a^2 - 1i*mu/v_0;
-    z_stag = [sqrt(z_squared); -sqrt(z_squared)];
-    x_stag = real(z_stag);
-    y_stag = imag(z_stag);
-    
-    % Filter stagnation points outside the cylinder
-    stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
-    x_stag = x_stag(stag_outside);
-    y_stag = y_stag(stag_outside);
+    switch lower(flow_type)
+        case 'cylinder'
+            % dW/dz = v_0(1 - a^2/z^2) + i*mu/z^2 = 0
+            % Solving: z^2 = a^2 - i*mu/v_0
+            z_squared = a^2 - 1i*mu/v_0;
+            z_stag = [sqrt(z_squared); -sqrt(z_squared)];
+            x_stag = real(z_stag);
+            y_stag = imag(z_stag);
+            % Filter stagnation points outside the cylinder
+            stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
+            x_stag = x_stag(stag_outside);
+            y_stag = y_stag(stag_outside);
+            
+        case 'doublet'
+            % dW/dz = v_0(1 - a^2/z^2) = 0
+            % Solving: z^2 = a^2 => z = ±a
+            x_stag = [a; -a];
+            y_stag = [0; 0];
+            
+        case 'vortex'
+            % dW/dz = v_0(1 - a^2/z^2) + i*mu/z = 0
+            % Multiply by z^2: v_0*z^2 - v_0*a^2 + i*mu*z = 0
+            % Quadratic: v_0*z^2 + i*mu*z - v_0*a^2 = 0
+            % z = [-i*mu ± sqrt(-mu^2 + 4*v_0^2*a^2)] / (2*v_0)
+            discriminant = -mu^2 + 4*v_0^2*a^2;
+            z_stag = [(-1i*mu + sqrt(discriminant))/(2*v_0); ...
+                      (-1i*mu - sqrt(discriminant))/(2*v_0)];
+            x_stag = real(z_stag);
+            y_stag = imag(z_stag);
+            % Filter stagnation points outside the cylinder
+            stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
+            x_stag = x_stag(stag_outside);
+            y_stag = y_stag(stag_outside);
+            
+        case 'source'
+            % dW/dz = v_0(1 - a^2/z^2) + mu/z = 0
+            % Multiply by z^2: v_0*z^2 - v_0*a^2 + mu*z = 0
+            % Quadratic: v_0*z^2 + mu*z - v_0*a^2 = 0
+            % z = [-mu ± sqrt(mu^2 + 4*v_0^2*a^2)] / (2*v_0)
+            discriminant = mu^2 + 4*v_0^2*a^2;
+            z_stag = [(-mu + sqrt(discriminant))/(2*v_0); ...
+                      (-mu - sqrt(discriminant))/(2*v_0)];
+            x_stag = real(z_stag);
+            y_stag = imag(z_stag);
+            % Filter stagnation points outside the cylinder
+            stag_outside = sqrt(x_stag.^2 + y_stag.^2) >= a;
+            x_stag = x_stag(stag_outside);
+            y_stag = y_stag(stag_outside);
+    end
     
     %% Figure 1: Streamlines and Equipotential Lines
     figure(fig_start)
@@ -94,7 +200,7 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     contour(X, Y, psi, 30, 'm');  % Streamlines (magenta)
     contour(X, Y, phi, 30, 'b--');  % Equipotential lines (blue dashed)
     
-    % Draw the cylinder
+    % Draw the cylinder (for all flow types)
     theta_cyl = linspace(0, 2*pi, 100);
     x_cyl = a * cos(theta_cyl);
     y_cyl = a * sin(theta_cyl);
@@ -122,37 +228,81 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     xlabel('Real(z)');
     ylabel('Imag(z)');
     
-    if mu == 0
-        title(['Flow Around Cylinder: W(z) = v_0(z + a^2/z), a = ' num2str(a) ', v_0 = ' num2str(v_0)]);
-    else
-        title(['Flow with Circulation: W(z) = v_0(z + a^2/z) - i\mu/z, \mu = ' num2str(mu)]);
+    % Set title based on flow type
+    switch lower(flow_type)
+        case 'cylinder'
+            if mu == 0
+                title(['Flow Around Cylinder: W(z) = v_0(z + a^2/z), a = ' num2str(a) ', v_0 = ' num2str(v_0)]);
+            else
+                title(['Flow with Circulation: W(z) = v_0(z + a^2/z) - i\mu/z, \mu = ' num2str(mu)]);
+            end
+        case 'doublet'
+            title(['Doublet Around Cylinder: W(z) = v_0(z + a^2/z), v_0 = ' num2str(v_0)]);
+        case 'vortex'
+            title(['Vortex Around Cylinder: W(z) = v_0(z + a^2/z) + i\mu log(z/a), \mu = ' num2str(mu)]);
+        case 'source'
+            if mu > 0
+                title(['Source Around Cylinder: W(z) = v_0(z + a^2/z) + Q log(z/a), Q = ' num2str(mu)]);
+            else
+                title(['Sink Around Cylinder: W(z) = v_0(z + a^2/z) + Q log(z/a), Q = ' num2str(mu)]);
+            end
     end
     
-    if ~isempty(x_stag) && ~isempty(x_sing)
-        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Singularities', 'Stagnation points', 'Location', 'southwest');
-    elseif ~isempty(x_sing)
-        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Singularities', 'Location', 'southwest');
-    elseif ~isempty(x_stag)
-        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Stagnation points', 'Location', 'southwest');
-    else
-        legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Cylinder', 'Location', 'southwest');
+    % Build legend based on what's plotted
+    legend_items = {'Streamlines (\psi)', 'Equipotential lines (\phi)'};
+    if strcmp(lower(flow_type), 'cylinder')
+        legend_items{end+1} = 'Cylinder';
     end
+    if ~isempty(x_sing)
+        legend_items{end+1} = 'Singularities';
+    end
+    if ~isempty(x_stag)
+        legend_items{end+1} = 'Stagnation points';
+    end
+    legend(legend_items, 'Location', 'southwest');
     hold off;
     
     %% Calculate velocity field
-    % Velocity: dW/dz = v_0(1 - a^2/z^2) - i*mu*(-1/z^2) = v_0(1 - a^2/z^2) + i*mu/z^2
-    % u - iv = v_0(1 - a^2*(x - iy)^2/r^4) + i*mu*(x - iy)^2/r^4
-    %        = v_0(1 - a^2*(x^2 - y^2 - 2ixy)/r^4) + i*mu*(x^2 - y^2 - 2ixy)/r^4
-    % u = v_0(1 - a^2*(x^2 - y^2)/r^4) - 2*mu*x*y/r^4
-    % v = v_0(2*a^2*x*y/r^4) + mu*(x^2 - y^2)/r^4
-    
+    % Velocity: u - iv = dW/dz
     r4 = r2.^2;
-    u = v_0 * (1 - a^2 * (X.^2 - Y.^2) ./ r4) - 2*mu * X .* Y ./ r4;
-    v = v_0 * (2 * a^2 * X .* Y ./ r4) + mu * (X.^2 - Y.^2) ./ r4;
     
-    % Mask interior
-    u(inside_cylinder) = NaN;
-    v(inside_cylinder) = NaN;
+    switch lower(flow_type)
+        case 'cylinder'
+            % dW/dz = v_0(1 - a^2/z^2) + i*mu/z^2
+            % u = v_0(1 - a^2*(x^2 - y^2)/r^4) - 2*mu*x*y/r^4
+            % v = v_0(2*a^2*x*y/r^4) + mu*(x^2 - y^2)/r^4
+            u = v_0 * (1 - a^2 * (X.^2 - Y.^2) ./ r4) - 2*mu * X .* Y ./ r4;
+            v = v_0 * (2 * a^2 * X .* Y ./ r4) + mu * (X.^2 - Y.^2) ./ r4;
+            u(inside_cylinder) = NaN;
+            v(inside_cylinder) = NaN;
+            
+        case 'doublet'
+            % Doublet Around Cylinder: dW/dz = v_0(1 - a^2/z^2)
+            % u = v_0(1 - a^2*(x^2 - y^2)/r^4)
+            % v = v_0(2*a^2*x*y/r^4)
+            u = v_0 * (1 - a^2 * (X.^2 - Y.^2) ./ r4);
+            v = v_0 * (2 * a^2 * X .* Y ./ r4);
+            u(inside_cylinder) = NaN;
+            v(inside_cylinder) = NaN;
+            
+        case 'vortex'
+            % Vortex Around Cylinder: dW/dz = v_0(1 - a^2/z^2) + i*mu/z
+            % u = v_0(1 - a^2*(x^2 - y^2)/r^4) - mu*y/r^2
+            % v = v_0(2*a^2*x*y/r^4) + mu*x/r^2
+            u = v_0 * (1 - a^2 * (X.^2 - Y.^2) ./ r4) - mu * Y ./ r2;
+            v = v_0 * (2 * a^2 * X .* Y ./ r4) + mu * X ./ r2;
+            u(inside_cylinder) = NaN;
+            v(inside_cylinder) = NaN;
+            
+        case 'source'
+            % Source Around Cylinder: dW/dz = v_0(1 - a^2/z^2) + mu/z
+            % u = v_0(1 - a^2*(x^2 - y^2)/r^4) + mu*x/r^2
+            % v = v_0(2*a^2*x*y/r^4) + mu*y/r^2
+            u = v_0 * (1 - a^2 * (X.^2 - Y.^2) ./ r4) + mu * X ./ r2;
+            v = v_0 * (2 * a^2 * X .* Y ./ r4) + mu * Y ./ r2;
+            u(inside_cylinder) = NaN;
+            v(inside_cylinder) = NaN;
+    end
     
     % Velocity magnitude
     vel_mag = sqrt(u.^2 + v.^2);
@@ -183,8 +333,15 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     hold on;
     contourf(X, Y, vel_mag, 20, 'LineStyle', 'none');
     colorbar;
-    fill(x_cyl, y_cyl, [0.5, 0.5, 0.5]);
-    h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    
+    % Draw cylinder (only for cylinder flow)
+    if strcmp(lower(flow_type), 'cylinder')
+        theta_cyl = linspace(0, 2*pi, 100);
+        x_cyl = a * cos(theta_cyl);
+        y_cyl = a * sin(theta_cyl);
+        fill(x_cyl, y_cyl, [0.5, 0.5, 0.5]);
+        h_cyl = plot(x_cyl, y_cyl, 'k-', 'LineWidth', 2);
+    end
     
     % Plot singularities on velocity magnitude plot
     if ~isempty(x_sing)
@@ -192,16 +349,27 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     end
     
     % Plot stagnation points on velocity magnitude plot
-    if ~isempty(x_stag) && ~isempty(x_sing)
+    if ~isempty(x_stag)
         h_stag = plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
-        legend([h_cyl, h_sing, h_stag], {'Cylinder', 'Singularities', 'Stagnation Points'}, 'Location', 'southwest');
-    elseif ~isempty(x_sing)
-        legend([h_cyl, h_sing], {'Cylinder', 'Singularities'}, 'Location', 'southwest');
-    elseif ~isempty(x_stag)
-        h_stag = plot(x_stag, y_stag, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.5, 0, 0.13], 'MarkerEdgeColor', [0.5, 0, 0.13], 'LineWidth', 2);
-        legend([h_cyl, h_stag], {'Cylinder', 'Stagnation Points'}, 'Location', 'southwest');
-    else
-        legend(h_cyl, 'Cylinder', 'Location', 'southwest');
+    end
+    
+    % Build legend dynamically
+    legend_handles = [];
+    legend_labels = {};
+    if strcmp(lower(flow_type), 'cylinder') && exist('h_cyl', 'var')
+        legend_handles(end+1) = h_cyl;
+        legend_labels{end+1} = 'Cylinder';
+    end
+    if ~isempty(x_sing) && exist('h_sing', 'var')
+        legend_handles(end+1) = h_sing;
+        legend_labels{end+1} = 'Singularities';
+    end
+    if ~isempty(x_stag) && exist('h_stag', 'var')
+        legend_handles(end+1) = h_stag;
+        legend_labels{end+1} = 'Stagnation Points';
+    end
+    if ~isempty(legend_handles)
+        legend(legend_handles, legend_labels, 'Location', 'southwest');
     end
     
     axis equal;
@@ -210,17 +378,53 @@ function plot_cylinder_flow(X, Y, a, v_0, mu, fig_start)
     xlabel('Real(z)');
     ylabel('Imag(z)');
     
-    if mu == 0
-        title('Velocity Magnitude |V| - Flow Around Cylinder');
-    else
-        title('Velocity Magnitude |V| - Flow with Circulation');
+    % Set title based on flow type
+    switch lower(flow_type)
+        case 'cylinder'
+            if mu == 0
+                title('Velocity Magnitude |V| - Flow Around Cylinder');
+            else
+                title('Velocity Magnitude |V| - Flow with Circulation');
+            end
+        case 'doublet'
+            title('Velocity Magnitude |V| - Doublet Around Cylinder');
+        case 'vortex'
+            title('Velocity Magnitude |V| - Vortex Around Cylinder');
+        case 'source'
+            if mu > 0
+                title('Velocity Magnitude |V| - Source Around Cylinder');
+            else
+                title('Velocity Magnitude |V| - Sink Around Cylinder');
+            end
     end
     hold off;
     
     %% Print Analysis
-    fprintf('Cylinder radius: a = %.2f\n', a);
-    fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
-    fprintf('Circulation parameter: mu = %.2f\n', mu);
+    switch lower(flow_type)
+        case 'cylinder'
+            fprintf('Flow type: Cylinder flow\n');
+            fprintf('Cylinder radius: a = %.2f\n', a);
+            fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
+            fprintf('Circulation parameter: mu = %.2f\n', mu);
+        case 'doublet'
+            fprintf('Flow type: Doublet around cylinder\n');
+            fprintf('Cylinder radius: a = %.2f\n', a);
+            fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
+        case 'vortex'
+            fprintf('Flow type: Vortex around cylinder\n');
+            fprintf('Cylinder radius: a = %.2f\n', a);
+            fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
+            fprintf('Circulation: Gamma = %.2f\n', mu);
+        case 'source'
+            if mu > 0
+                fprintf('Flow type: Source around cylinder\n');
+            else
+                fprintf('Flow type: Sink around cylinder\n');
+            end
+            fprintf('Cylinder radius: a = %.2f\n', a);
+            fprintf('Free stream velocity: v_0 = %.2f\n', v_0);
+            fprintf('Strength: Q = %.2f\n', mu);
+    end
     
     if ~isempty(x_sing)
         fprintf('Singularities:\n');
