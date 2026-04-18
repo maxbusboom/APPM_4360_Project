@@ -21,13 +21,13 @@ y = linspace(-3, 3, 400);
 fprintf('=== Flow without circulation ===\n');
 plot_cylinder_flow(X, Y, a, v_0, 0, 1);
 
+% Stagnation Point Trajectory Analysis
+fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
+plot_stagnation_trajectory(a, v_0, 3);
+
 % Flow with circulation
 fprintf('\n=== Flow with circulation ===\n');
-plot_cylinder_flow(X, Y, a, v_0, mu, 3);
-
-%% Stagnation Point Trajectory Analysis
-fprintf('\n=== Stagnation Point Trajectory Analysis ===\n');
-plot_stagnation_trajectory(a, v_0, 5);
+plot_cylinder_flow(X, Y, a, v_0, mu, 5);
 
 %% Function Definitions
 
