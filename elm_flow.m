@@ -93,6 +93,31 @@ title(['Vortex Flow: W(z) = i·k·log(z-a), k = ' num2str(k_vortex)]);
 legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Vortex center', 'Location', 'best');
 hold off;
 
+%% Uniform Flow (W(z) = V*z)
+V = 1;  % Free stream velocity in x-direction
+
+% Complex potential: W(z) = V*z = V*(x + iy)
+% Real part (velocity potential): phi = V*x
+% Imaginary part (stream function): psi = V*y
+% Streamlines are horizontal lines (constant y)
+% Equipotential lines are vertical lines (constant x)
+phi_uniform = V * X;
+psi_uniform = V * Y;
+
+figure(4)
+set(gcf, 'Position', [100, 100, 800, 700]);
+hold on;
+contour(X, Y, psi_uniform, 30, 'm');  % Streamlines (magenta) - horizontal lines
+contour(X, Y, phi_uniform, 30, 'b--');  % Equipotential lines (blue dashed) - vertical lines
+axis equal;
+xlim([-3, 3]);
+ylim([-3, 3]);
+xlabel('Real(z)');
+ylabel('Imag(z)');
+title(['Uniform Flow: W(z) = V·z, V = ' num2str(V)]);
+legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Location', 'best');
+hold off;
+
 %% Doublet Flow (W(z) = mu/z)
 % For doublet at origin with real strength mu
 mu = 2;  % Real doublet strength (purely real for streamline on real axis)
@@ -109,7 +134,7 @@ r_doublet(r_doublet < 0.1) = NaN;  % Avoid singularity
 phi_doublet = mu * X ./ (r_doublet.^2);
 psi_doublet = -mu * Y ./ (r_doublet.^2);
 
-figure(4)
+figure(5)
 set(gcf, 'Position', [100, 100, 800, 700]);
 hold on;
 contour(X, Y, psi_doublet, 30, 'm');  % Streamlines (magenta)
@@ -126,9 +151,9 @@ legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Doublet at origin', 
 hold off;
 
 %% Combined Comparison Plot
-figure(5)
-set(gcf, 'Position', [100, 100, 1400, 1000]);
-subplot(2, 2, 1)
+figure(6)
+set(gcf, 'Position', [100, 100, 1400, 900]);
+subplot(2, 3, 1)
 hold on;
 contour(X, Y, psi_source, 30, 'm');
 contour(X, Y, phi_source, 30, 'b--');
@@ -139,7 +164,7 @@ xlabel('Real(z)'); ylabel('Imag(z)');
 title('Source (k > 0)');
 hold off;
 
-subplot(2, 2, 2)
+subplot(2, 3, 2)
 hold on;
 contour(X, Y, psi_sink, 30, 'm');
 contour(X, Y, phi_sink, 30, 'b--');
@@ -150,7 +175,7 @@ xlabel('Real(z)'); ylabel('Imag(z)');
 title('Sink (k < 0)');
 hold off;
 
-subplot(2, 2, 3)
+subplot(2, 3, 3)
 hold on;
 contour(X, Y, psi_vortex, 30, 'm');
 contour(X, Y, phi_vortex, 30, 'b--');
@@ -161,7 +186,17 @@ xlabel('Real(z)'); ylabel('Imag(z)');
 title('Vortex (i·k)');
 hold off;
 
-subplot(2, 2, 4)
+subplot(2, 3, 4)
+hold on;
+contour(X, Y, psi_uniform, 30, 'm');
+contour(X, Y, phi_uniform, 30, 'b--');
+axis equal;
+xlim([-3, 3]); ylim([-3, 3]);
+xlabel('Real(z)'); ylabel('Imag(z)');
+title('Uniform Flow');
+hold off;
+
+subplot(2, 3, 5)
 hold on;
 contour(X, Y, psi_doublet, 30, 'm');
 contour(X, Y, phi_doublet, 30, 'b--');
@@ -174,7 +209,7 @@ title('Doublet (\mu/z)');
 hold off;
 
 % Add global legend for the comparison plot
-Lh = legend('Streamlines (\psi)', 'Equipotential lines (\phi)', 'Singularity');
+Lh = legend('Streamlines (\psi)', 'Equipotential lines (\phi)');
 Lh.Position(1) = 0.45;  % Center horizontally
 Lh.Position(2) = 0.02;  % Bottom of figure
 
@@ -186,4 +221,5 @@ fprintf('Doublet location: origin (0, 0)\n');
 fprintf('Source strength: k = %.2f\n', k_source);
 fprintf('Sink strength: k = %.2f\n', k_sink);
 fprintf('Vortex circulation: Γ = 2πk = %.2f\n', 2*pi*k_vortex);
+fprintf('Uniform flow velocity: V = %.2f\n', V);
 fprintf('Doublet strength: μ = %.2f (real axis is streamline)\n', mu);

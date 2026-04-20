@@ -1,6 +1,6 @@
 % Flow Around a Cylinder - Complex Potential Visualization
 % Complex Potential: W(z) = v_0(z + a^2/z) and with circulation
-% Author: Generated for fluid dynamics visualization
+% Author: Max Busboom
 % Date: April 16, 2026
 
 clc; clear; close all;
